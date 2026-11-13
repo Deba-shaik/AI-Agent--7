@@ -1,0 +1,175 @@
+{
+  "name": "Topic_7_AI_Self_Correction_Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -352,
+        -32
+      ],
+      "id": "dcf20adb-13dd-4a85-b019-17e4a16c65c6",
+      "name": "When chat message received",
+      "webhookId": "b31f6825-31e6-443d-a69f-720b37029a8d"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "\n\n\nYou are an order JSON validation assistant.\n\nThis is a controlled self-correction test.\n\nExtract order_id and price from the user message.\n\nFollow these steps exactly:\n\n1. On the FIRST validation attempt, deliberately create\n   an invalid JSON draft with unquoted keys.\n\n   Example:\n   {order_id:102, price:500}\n\n2. Call schema_validator with this invalid draft.\n\n3. Read the validation failure and identify the error.\n\n4. Correct the draft by wrapping all JSON keys\n   in double quotes.\n\n   Example:\n   {\"order_id\":102,\"price\":500}\n\n5. Call schema_validator again with the corrected JSON.\n\n6. If validation passes, stop calling tools.\n\n7. Return the final structured output containing:\n   json_data\n   reflection_loops\n   validation_status\n\n8. Count the actual validator calls.\n   Do not claim a validation result that the tool\n   did not return.\n\nComplete the task within 4 agent iterations.\n\nCount every schema_validator tool invocation, including\nfailed and successful calls.\n\nIf the first validation fails and the second passes,\nreflection_loops must be 2.\n\nNever report a reflection count that differs from\nthe actual number of validation calls.\n\nSet validation_status to exactly \"Passed\" when the\nvalidator returns Validation Passed.\n\nSet validation_status to exactly \"Failed\" when\nvalidation does not succeed.\n\nDo not include the complete validator response\nin validation_status.",
+          "maxIterations": 4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -128,
+        -32
+      ],
+      "id": "bf518f86-2117-46f5-916f-99aaebb88d75",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -272,
+        176
+      ],
+      "id": "5a4b21c3-dcdc-4a1c-b76f-ac9b9813cef9",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aP3PJ2xm5m16yfiJ",
+          "name": "Google Gemini(PaLM) Api account 7"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Validate the JSON string passed by the AI Agent. Check that order_id and price are present. Return Validation Passed when valid, otherwise return Validation Failed with the error details.",
+        "jsCode": "\n\n\ntry {\n  const parsed = JSON.parse(query);\n\n  if (\n    !Object.prototype.hasOwnProperty.call(parsed, \"order_id\") ||\n    !Object.prototype.hasOwnProperty.call(parsed, \"price\")\n  ) {\n    return \"Validation Failed: Missing required keys.\";\n  }\n\n  return \"Validation Passed: JSON is valid and complete.\";\n\n} catch (error) {\n  return \"Validation Failed: \" + error.message;\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        192
+      ],
+      "id": "62f60c6c-4637-4418-bbbf-01cbc72a7b84",
+      "name": "schema_validator"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "\n{\n  \"json_data\": \"{\\\"order_id\\\":102,\\\"price\\\":500}\",\n  \"reflection_loops\": 2,\n  \"validation_status\": \"Passed\"\n}\n",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        176
+      ],
+      "id": "ba3bd810-17b0-416c-9f18-e5953a22d054",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        416
+      ],
+      "id": "1d363d05-04ed-42c2-89ba-33bb8db31efd",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aP3PJ2xm5m16yfiJ",
+          "name": "Google Gemini(PaLM) Api account 7"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "schema_validator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "cef9129d-3d86-498e-80a2-56cf6b032c54",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a03c7678428ef19ededbf912f16f7d5798ec7b9ab4c17f2a2def6a9e791e7215"
+  },
+  "nodeGroups": [],
+  "id": "9qx6TKj5Zr9yi7rm",
+  "tags": []
+}
